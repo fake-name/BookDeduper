@@ -1,6 +1,9 @@
 
 import abc
 import logging
+from collections import namedtuple
+
+ImageBytes = namedtuple('ImageBytes', ['data', 'format','image_name'])
 
 class BookInterface(object, metaclass=abc.ABCMeta):
 	def __init__(self, file_path):

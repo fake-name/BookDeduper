@@ -2,6 +2,7 @@
 bs4
 lxml
 EbookLib
-
-
+colorama
+poppler
+PyPDF2
 pillow

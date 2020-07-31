@@ -16,7 +16,6 @@ class EpubInterface(base.BookInterface):
 		return ext.lower() == ".epub"
 
 	def __load_text(self):
-
 		self.texts = []
 		for document in self.epub.get_items_of_type(ebooklib.ITEM_DOCUMENT):
 			soup = bs4.BeautifulSoup(document.content, 'lxml')
@@ -31,23 +30,36 @@ class EpubInterface(base.BookInterface):
 			if text:
 				self.texts.append(text)
 
+		self.log.info("Found %s sections of %s total characters.", len(self.texts), sum([len(tmp) for tmp in self.texts]))
+
 	def __load_images(self):
-		self.images = []
+		self.image_bytes = []
 
 		for imageobj in self.epub.get_items_of_type(ebooklib.ITEM_IMAGE):
-			bio = io.BytesIO(imageobj.content)
-			image = Image.open(bio)
-			self.images.append(image)
 
+			self.image_bytes.append(
+					base.ImageBytes(data=imageobj.content,
+								     format='',
+								     image_name='')
+				)
+
+		self.log.info("Found %s images.", len(self.image_bytes))
 
 	def open_file(self, file_path):
+		self.log.info("Loading file: %s", file_path)
 		self.epub = ebooklib.epub.read_epub(file_path)
 		self.__load_text()
 		self.__load_images()
 
 	def get_text(self):
-
 		return self.texts
 
 	def get_images(self):
-		return self.images
+		ret = []
+
+		for image_b in self.image_bytes:
+			bio = io.BytesIO(image_b)
+			image = Image.open(bio)
+			ret.append(image)
+
+		return ret

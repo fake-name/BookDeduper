@@ -97,6 +97,9 @@ class ColourHandler(UnlockedHandler):
 		# print record.levelname
 		# print record.name
 
+		if record.name.startswith("pdfminer") and record.levelname in {"DEBUG", "INFO"}:
+			return
+
 		segments = record.name.split(".")
 		tname = threading.current_thread().name
 		segments.append(tname)
