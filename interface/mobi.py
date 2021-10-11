@@ -1,8 +1,11 @@
 
 
 
+import mobi
+
 import os.path
 from . import base
+
 
 
 class MobiInterface(base.BookInterface):
@@ -12,3 +15,5 @@ class MobiInterface(base.BookInterface):
 	def wants_file(file_path):
 		_, ext = os.path.splitext(file_path)
 		return ext.lower() == ".mobi"
+
+

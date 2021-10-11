@@ -6,7 +6,8 @@ import struct
 from PIL import Image
 from PIL import ImageOps
 
-import fitz
+import poppler
+import PyPDF2
 from . import base
 
 
@@ -115,9 +116,6 @@ def extract_images_from_pdf_page(xObject):
 			image_list += extract_images_from_pdf_page(xObject[obj])
 
 	return image_list
-
-
-
 class PdfInterface(base.BookInterface):
 
 	def __init__(self, *args, **kwargs):
@@ -150,28 +148,14 @@ class PdfInterface(base.BookInterface):
 		self.log.info("Found %s pages of text consisting of %s total characters.", len(self.texts), sum([len(tmp) for tmp in self.texts]))
 
 
-	def __load_content(self):
-		self.texts = []
+	def __load_images(self):
 		self.images = []
-		for page in self.p_pdf:
+		for page_num in range(self.pdf.getNumPages()):
+			page = self.pdf.getPage(page_num)
 
-			text = page.getText()
-
-			# extract_text() can return None, we don't want to strip that.
-			if text:
-				text = text.strip()
-
-			if text:
-				self.texts.append(text)
-
-			images = page.getImageList()
-			print(images)
-
-			# images = extract_images_from_pdf_page(page)
-			# for image in images:
-			# 	self.images.append(image)
-
-		self.log.info("Found %s pages of text consisting of %s total characters.", len(self.p_pdf), sum([len(tmp) for tmp in self.texts]))
+			images = extract_images_from_pdf_page(page)
+			for image in images:
+				self.images.append(image)
 
 		self.log.info("Found %s images.", len(self.images))
 
@@ -184,13 +168,17 @@ class PdfInterface(base.BookInterface):
 		# pdfplumber and PyPDF2 both work, but take 100+ times longer
 		# to extract text. Poppler is ~1-2 seconds for 400 pages, pyPDF2
 		# is ~200+ seconds
-		self.p_pdf = fitz.open(file_path)
+		self.p_pdf = poppler.load_from_file(file_path)
+		self.__load_text()
 
+		self.fh = open(file_path, "rb")
+		self.pdf = PyPDF2.PdfFileReader(self.fh)
 
-		self.__load_content()
+		self.__load_images()
 
 	def get_text(self):
-		return "\n\n".join(self.texts)
+
+		return self.texts
 
 	def get_images(self):
 		ret = []

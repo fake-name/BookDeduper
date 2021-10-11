@@ -3,6 +3,16 @@ bs4
 lxml
 EbookLib
 colorama
-poppler
+python-poppler
+PyMuPDF
 PyPDF2
 pillow
+tqdm
+mobi
+
+datasketch
+spacy
+ftfy
+numpy
+scipy
+nltk

@@ -33,17 +33,17 @@ class EpubInterface(base.BookInterface):
 		self.log.info("Found %s sections of %s total characters.", len(self.texts), sum([len(tmp) for tmp in self.texts]))
 
 	def __load_images(self):
-		self.image_bytes = []
+		self.images = []
 
 		for imageobj in self.epub.get_items_of_type(ebooklib.ITEM_IMAGE):
 
-			self.image_bytes.append(
+			self.images.append(
 					base.ImageBytes(data=imageobj.content,
 								     format='',
 								     image_name='')
 				)
 
-		self.log.info("Found %s images.", len(self.image_bytes))
+		self.log.info("Found %s images.", len(self.images))
 
 	def open_file(self, file_path):
 		self.log.info("Loading file: %s", file_path)
@@ -52,14 +52,15 @@ class EpubInterface(base.BookInterface):
 		self.__load_images()
 
 	def get_text(self):
-		return self.texts
+		return "\n\n".join(self.texts)
 
 	def get_images(self):
 		ret = []
 
-		for image_b in self.image_bytes:
-			bio = io.BytesIO(image_b)
+		for image in self.images:
+			bio = io.BytesIO(image.data)
 			image = Image.open(bio)
 			ret.append(image)
 
 		return ret
+

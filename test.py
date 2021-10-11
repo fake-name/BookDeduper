@@ -2,45 +2,70 @@
 import sys
 import os
 import os.path
-import traceback
+import concurrent.futures
+from io import BytesIO
+
+import tqdm
 
 import interface
+import db_cache
 
-modules = [
-	interface.Azw3Interface,
-	interface.EpubInterface,
-	interface.MobiInterface,
-	interface.PdfInterface,
-]
+def try_load(filename, db):
 
-def try_load_file(file_path):
-	try:
-		for module in modules:
-			if module.wants_file(file_path):
-				return module(file_path)
-	except Exception:
-		traceback.print_exc()
-		print("Bad file: '%s'" % (file_path, ))
-	print("Unknown: ", file_path)
-	return interface.UnknownInterface(file_path)
+	loaded = interface.try_load_file(filename)
+	if loaded.known_file():
+		db.insert_file(filename, internal_path='text', content=loaded.get_text())
+		for image_idx, image in enumerate(loaded.get_images()):
+			im_bytes = BytesIO()
+			image.save(im_bytes, 'jpeg')
+
+			db.insert_file(filename,
+				internal_path = 'image_{}'.format(image_idx),
+				content       = im_bytes.getvalue()
+				)
+
+
+	loaded = interface.try_load_file(filename)
+	if loaded.known_file():
+		loaded.get_text()
+		loaded.get_images()
+
+
 
 def scan_directory(path):
 	items = []
+	exts = {}
 
-	for root, directories, files in os.walk(path):
-		for filen in files:
-			if filen == "metadata.opf":
-				continue
-			if filen == "cover.jpg":
-				continue
+	cache = db_cache.DbInterface("files.db")
+	with concurrent.futures.ThreadPoolExecutor() as tpe:
+		for root, directories, files in tqdm.tqdm(os.walk(path)):
+			for filen in files:
+				if filen == "metadata.opf":
+					continue
+				if filen == "cover.jpg":
+					continue
 
+				if filen.lower().endswith(".jpg"):
+					continue
 
-			fqpath = os.path.join(root, filen)
-			loaded = try_load_file(fqpath)
-			if loaded.known_file():
-				loaded.get_text()
-				loaded.get_images()
-			# items.append(loaded)
+				_, ext = os.path.splitext(filen)
+
+				fqpath = os.path.join(root, filen)
+
+				res = tpe.submit(try_load, fqpath, cache)
+				items.append(res)
+
+				exts.setdefault(ext, 0)
+				exts[ext] += 1
+
+				if sum(exts.values()) % 1000 == 0:
+					print("Found extensions: ", exts)
+
+			if len(items) > 1000:
+				for item in tqdm.tqdm(items):
+					item.result()
+
+	print("Found extensions: ", exts)
 
 
 
